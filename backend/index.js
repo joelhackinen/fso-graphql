@@ -140,7 +140,7 @@ const resolvers = {
           invalidArgs: args.title,
         })
       }
-      const book = { title: args.title, author: args.author, published: args, genres: args.genres, id: uuid() }
+      const book = { title: args.title, author: args.author, published: args.published, genres: args.genres, id: uuid() }
       books = books.concat(book)
       return book
     },
