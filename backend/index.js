@@ -1,8 +1,13 @@
-const { ApolloServer, gql, UserInputError, AuthenticationError } = require('apollo-server')
+const { ApolloServer,
+  UserInputError,
+  AuthenticationError,
+  gql } = require('apollo-server')
+
 const config = require('./utils/config')
 const jwt = require('jsonwebtoken')
 
 const mongoose = require('mongoose')
+
 const Author = require('./models/Author')
 const Book = require('./models/Book')
 const User = require('./models/User')
@@ -85,21 +90,28 @@ const resolvers = {
       return Book.find({}).populate('author')
     },
     allAuthors: async () => {
-      return Author.find({})
+      const books = await Book.find({}).populate('author')
+      const authors = await Author.find({})
+      return authors.map(a => ({
+        name: a.name,
+        born: a.born,
+        id: a._id,
+        bookCount: books.filter(b => b.author.name === a.name).length
+      }))
     },
     me: (root, args, context) => {
       return context.currentUser
     }
   },
   Mutation: {
-    addBook: async (root, args) => {
-      if (!currentUser) {
+    addBook: async (root, args, context) => {
+      if (!context.currentUser) {
         throw new AuthenticationError('not authenticated')
       }
       let a = await Author.findOne({ name: args.author })
       try {
         if (!a) {
-          a = new Author({ name: args.author, born: null })
+          a = new Author({ name: args.author })
           await a.save()
         }
         const book = new Book({ ...args, author: a._id })
@@ -117,8 +129,8 @@ const resolvers = {
         })
       }
     },
-    editAuthor: async (root, args) => {
-      if (!currentUser) {
+    editAuthor: async (root, args, context) => {
+      if (!context.currentUser) {
         throw new AuthenticationError('not authenticated')
       }
       const author = await Author.findOne({ name: args.name })
@@ -130,7 +142,7 @@ const resolvers = {
           invalidArgs: args,
         })
       }
-      return author
+      return author.save()
     },
     createUser: async (root, args) => {
       const user = new User({ username: args.username, favoriteGenre: args.favoriteGenre })

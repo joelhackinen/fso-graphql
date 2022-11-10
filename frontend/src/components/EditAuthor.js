@@ -14,23 +14,34 @@ const EditAuthor = (props) => {
   useEffect(() => {
     if (data) {
       setAuthors(data.allAuthors)
+      setSelected(data.allAuthors.length > 0 ? data.allAuthors[0].name : '')
     }
   }, [data])
 
   const [editAuthor] = useMutation(EDIT_AUTHOR, {
-    refetchQueries: [ { query: ALL_AUTHORS } ]
+    update: (cache, response) => {
+      cache.updateQuery(
+        { query: ALL_AUTHORS },
+        ({ allAuthors }) => {
+          const editedAuthor = response.data.editAuthor
+          return {
+            allAuthors: allAuthors.map(a => a.name === editedAuthor.name
+              ? a = ({ ...editedAuthor, bookCount: a.bookCount })
+              : a
+            )
+          }
+        }
+      )
+    }
   })
 
   if (!props.show) {
     return null
   }
 
-  const submit = (event) => {
+  const submit = async (event) => {
     event.preventDefault()
-
-    editAuthor({ variables: { name: selected, born } })
-    setSelected('')
-    setBorn('')
+    editAuthor({ variables: { name: selected, born: born } })
   }
 
   return (
@@ -39,7 +50,7 @@ const EditAuthor = (props) => {
       <form onSubmit={submit}>
         <div>
         author
-          <select onChange={(event) => setSelected(event.target.value)}>
+          <select value={selected} onChange={(event) => setSelected(event.target.value)}>
             {authors.map((a, i) => <option key={i} value={a.name}>{a.name}</option>)}
           </select>
         </div>
