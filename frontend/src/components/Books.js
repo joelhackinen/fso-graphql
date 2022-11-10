@@ -1,4 +1,23 @@
+import { useQuery } from '@apollo/client'
+import { useEffect, useState } from 'react'
+import { ALL_BOOKS, BOOKS_BY_GENRE } from '../queries'
+
 const Books = ({ show, books }) => {
+  const [genre, setGenre] = useState('')
+  const [booksToShow, setBooksToShow] = useState([])
+
+  const { data: bookData } = useQuery(genre === '' ? ALL_BOOKS : BOOKS_BY_GENRE, {
+    variables: { genre },
+    skip: !show
+  })
+
+  useEffect(() =>{
+    if (bookData) {
+      setBooksToShow(bookData.allBooks)
+    }
+  }, [bookData])
+
+  const allGenres = [ ...new Set(books.reduce((a, b) => a.concat(b.genres), []))]
 
   if (!show) {
     return null
@@ -14,7 +33,7 @@ const Books = ({ show, books }) => {
             <th>author</th>
             <th>published</th>
           </tr>
-          {books.map((b, i) => (
+          {booksToShow.map((b, i) => (
             <tr key={i}>
               <td>{b.title}</td>
               <td>{b.author.name}</td>
@@ -23,6 +42,8 @@ const Books = ({ show, books }) => {
           ))}
         </tbody>
       </table>
+      {allGenres.map((g, i) => <button onClick={() => setGenre(g)} key={i}>{g}</button>)}
+      <button onClick={() => setGenre('')}>all genres</button>
     </div>
   )
 }

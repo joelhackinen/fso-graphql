@@ -20,13 +20,13 @@ const App = () => {
     skip: !token,
   })
 
-  const { data } = useQuery(ALL_BOOKS)
+  const { data: booksData } = useQuery(ALL_BOOKS)
 
   useEffect(() => {
-    if (data) {
-      setBooks(data.allBooks)
+    if (booksData) {
+      setBooks(booksData.allBooks)
     }
-  }, [data])
+  }, [booksData])
 
   useEffect(() => {
     const token = localStorage.getItem('books-user-token')
