@@ -10,36 +10,24 @@ const NewBook = ({ show, favoriteGenre }) => {
   const [genres, setGenres] = useState([])
 
   const [createBook] = useMutation(ADD_BOOK, {
-    update: (cache, response) => {
-      cache.updateQuery(
-        { query: BOOKS_BY_GENRE, variables: { genre: favoriteGenre }},
-        ({ allBooks }) => {
-          const addedBookGenres = response.data.addBook.genres
-          return { 
-            allBooks: addedBookGenres.includes(favoriteGenre)
-              ? allBooks.concat(response.data.addBook)
-              : allBooks
-          }
-        }
-      )
-      cache.updateQuery(
-        { query: ALL_BOOKS },
-        ({ allBooks }) => {
-          return { allBooks: allBooks.concat(response.data.addBook) }
-        }
-      )
-      cache.updateQuery(
-        { query: ALL_AUTHORS },
-        ({ allAuthors }) => {
-          const addedBookAuthor = response.data.addBook.author
-          const isExistingAuthor = allAuthors.map(a => a.name).includes(addedBookAuthor.name)
-          return {
-            allAuthors: isExistingAuthor
-              ? allAuthors
-              : allAuthors.concat(addedBookAuthor)
-          }
-        }
-      )
+    update: (cache, { data: { addBook } }) => {
+      try { // might not be cached before calling this
+        cache.updateQuery({ query: BOOKS_BY_GENRE, variables: { genre: favoriteGenre }}, ({ allBooks }) => ({ 
+          allBooks: addBook.genres.includes(favoriteGenre)
+            ? allBooks.concat(addBook)
+            : allBooks
+        }))
+      } catch (e) {
+        // no need to handle this. this query will be cached if/when needed
+      }
+      cache.updateQuery({ query: ALL_BOOKS }, ({ allBooks }) => ({  // will always be cached before calling
+        allBooks: allBooks.concat(addBook)
+      }))
+      cache.updateQuery({ query: ALL_AUTHORS }, ({ allAuthors }) => ({  // will always be cached before calling
+        allAuthors: allAuthors.map(a => a.name).includes(addBook.author.name)
+          ? allAuthors.map(a => a.name === addBook.author.name ? a = { ...a, bookCount: a.bookCount + 1 } : a)
+          : allAuthors.concat({ ...addBook.author, bookCount: 1 })
+      }))
     }
   })
 

@@ -19,29 +19,23 @@ const EditAuthor = (props) => {
   }, [data])
 
   const [editAuthor] = useMutation(EDIT_AUTHOR, {
-    update: (cache, response) => {
-      cache.updateQuery(
-        { query: ALL_AUTHORS },
-        ({ allAuthors }) => {
-          const editedAuthor = response.data.editAuthor
-          return {
-            allAuthors: allAuthors.map(a => a.name === editedAuthor.name
-              ? a = ({ ...editedAuthor, bookCount: a.bookCount })
-              : a
-            )
-          }
-        }
-      )
+    update: (cache, { data: { editAuthor } } ) => {
+      cache.updateQuery({ query: ALL_AUTHORS }, ({ allAuthors }) => ({
+        allAuthors: allAuthors.map(a => a.name === editAuthor.name
+          ? a = ({ ...editAuthor, bookCount: a.bookCount })
+          : a
+        )
+      }))
     }
   })
-
-  if (!props.show) {
-    return null
-  }
 
   const submit = async (event) => {
     event.preventDefault()
     editAuthor({ variables: { name: selected, born: born } })
+  }
+
+  if (!props.show) {
+    return null
   }
 
   return (
