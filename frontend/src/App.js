@@ -9,10 +9,18 @@ import UserForm from './components/UserForm'
 import Recommendations from './components/Recommendations'
 import { ALL_AUTHORS, ALL_BOOKS, BOOKS_BY_GENRE, BOOK_ADDED } from './queries'
 
-export const updateCache = (cache, added) => {
+export const updateBooksCache = (cache, added) => {
+  const uniqByTitle = (a) => {
+    let seen = new Set()
+    return a.filter((item) => {
+      let k = item.title
+      return seen.has(k) ? false : seen.add(k)
+    })
+  }
+
   cache.updateQuery({ query: ALL_BOOKS }, ({ allBooks }) => {
     return {
-      allBooks: allBooks.concat(added),
+      allBooks: uniqByTitle(allBooks.concat(added)),
     }
   })
 
@@ -20,14 +28,16 @@ export const updateCache = (cache, added) => {
     try { // update query for each genre only if query already exists for that specific genre
       cache.updateQuery({ query: BOOKS_BY_GENRE, variables: { genre: g }}, ({ allBooks }) => { 
         return {
-          allBooks: allBooks.concat(added),
+          allBooks: uniqByTitle(allBooks.concat(added)),
         }
       })
     } catch (e) {
       // no need to handle this
     }
   })
+}
 
+const updateAuthorCache = (cache, added) => {
   cache.updateQuery({ query: ALL_AUTHORS }, ({ allAuthors }) => {
     return {
       allAuthors: allAuthors.map(a => a.name).includes(added.author.name)
@@ -46,7 +56,8 @@ const App = () => {
   useSubscription(BOOK_ADDED, {
     onData: ({ data, client }) => {
       window.alert("New book has been added")
-      updateCache(client.cache, data.data.bookAdded)
+      updateBooksCache(client.cache, data.data.bookAdded)
+      updateAuthorCache(client.cache, data.data.bookAdded)
     }
   })
 
