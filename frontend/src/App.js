@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useApolloClient, useQuery } from '@apollo/client'
+import { useApolloClient, useQuery, useSubscription } from '@apollo/client'
 import Authors from './components/Authors'
 import Books from './components/Books'
 import NewBook from './components/NewBook'
@@ -7,20 +7,51 @@ import EditAuthor from './components/EditAuthor'
 import LoginForm from './components/LoginForm'
 import UserForm from './components/UserForm'
 import Recommendations from './components/Recommendations'
-import { GET_USER, ALL_BOOKS } from './queries'
+import { ALL_AUTHORS, ALL_BOOKS, BOOKS_BY_GENRE, BOOK_ADDED } from './queries'
+
+export const updateCache = (cache, added) => {
+  cache.updateQuery({ query: ALL_BOOKS }, ({ allBooks }) => {
+    return {
+      allBooks: allBooks.concat(added),
+    }
+  })
+
+  added.genres.forEach(g => {
+    try { // update query for each genre only if query already exists for that specific genre
+      cache.updateQuery({ query: BOOKS_BY_GENRE, variables: { genre: g }}, ({ allBooks }) => { 
+        return {
+          allBooks: allBooks.concat(added),
+        }
+      })
+    } catch (e) {
+      // no need to handle this
+    }
+  })
+
+  cache.updateQuery({ query: ALL_AUTHORS }, ({ allAuthors }) => {
+    return {
+      allAuthors: allAuthors.map(a => a.name).includes(added.author.name)
+        ? allAuthors.map(a => a.name === added.author.name ? a = { ...a, bookCount: a.bookCount + 1 } : a)
+        : allAuthors.concat({ ...added.author, bookCount: 1 })
+    }
+  })
+}
 
 const App = () => {
-  const [favGenre, setFavGenre] = useState(null)
   const [page, setPage] = useState('authors')
   const [token, setToken] = useState(null)
   const [books, setBooks] = useState([])
   const client = useApolloClient()
 
-  const { data: userData } = useQuery(GET_USER, {
-    skip: !token,
+  useSubscription(BOOK_ADDED, {
+    onData: ({ data, client }) => {
+      window.alert("New book has been added")
+      updateCache(client.cache, data.data.bookAdded)
+    }
   })
 
   const { data: booksData } = useQuery(ALL_BOOKS)
+  useQuery(ALL_AUTHORS)
 
   useEffect(() => {
     if (booksData) {
@@ -33,15 +64,8 @@ const App = () => {
     setToken(token)
   }, [])
 
-  useEffect(() => {
-    if (userData) {
-      setFavGenre(userData.me.favoriteGenre)
-    }
-  }, [userData])
-
   const logout = () => {
     setToken(null)
-    setFavGenre(null)
     localStorage.clear()
     client.resetStore()
     setPage('authors')
@@ -71,15 +95,15 @@ const App = () => {
 
       <Books show={page === 'books'} books={books} />
 
-      <NewBook show={page === 'add'} favoriteGenre={favGenre} />
+      <NewBook show={page === 'add'} />
 
       <EditAuthor show={page === 'editAuthor'} />
 
       <LoginForm show={page === 'login'} setToken={setToken} setPage={() => setPage('authors')} />
 
-      <UserForm show={page === 'signUp'} setPage={() => setPage('login')}/>
+      <UserForm show={page === 'signUp'} setPage={() => setPage('login')} />
 
-      <Recommendations show={page === 'recommended'} genre={favGenre} />
+      <Recommendations show={page === 'recommended'} />
     </div>
   )
 }

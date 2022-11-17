@@ -1,3 +1,6 @@
+const { PubSub } = require('graphql-subscriptions')
+const pubsub = new PubSub()
+
 const { UserInputError, AuthenticationError } = require('apollo-server')
 const jwt = require('jsonwebtoken')
 
@@ -5,7 +8,7 @@ const Author = require('./models/Author')
 const Book = require('./models/Book')
 const User = require('./models/User')
 
-const { SECRET } = require('./utils/config')
+const { JWT_SECRET } = require('./utils/config')
 
 const resolvers = {
   Query: {
@@ -37,25 +40,27 @@ const resolvers = {
         throw new AuthenticationError('not authenticated')
       }
       let a = await Author.findOne({ name: args.author })
+      if (!a) {
+        a = new Author({ name: args.author })
+        await a.save()
+      }
+      const book = new Book({ ...args, author: a._id })
       try {
-        if (!a) {
-          a = new Author({ name: args.author })
-          await a.save()
-        }
-        const book = new Book({ ...args, author: a._id })
         await book.save()
-        return {
-          title: book.title,
-          published: book.published,
-          genres: book.genres,
-          id: book._id,
-          author: a
-        }
       } catch (error) {
         throw new UserInputError(error.message, {
           invalidArgs: args
         })
       }
+      const addedBook = {
+        title: book.title,
+        published: book.published,
+        genres: book.genres,
+        id: book._id,
+        author: a
+      }
+      pubsub.publish('BOOK_ADDED', { bookAdded: addedBook })
+      return addedBook
     },
     editAuthor: async (root, args, context) => {
       if (!context.currentUser) {
@@ -89,9 +94,14 @@ const resolvers = {
         username: user.username,
         id: user._id,
       }
-      return { value: jwt.sign(userForToken, SECRET) }
+      return { value: jwt.sign(userForToken, JWT_SECRET) }
     }
-  }
+  },
+  Subscription: {
+    bookAdded: {
+      subscribe: () => pubsub.asyncIterator('BOOK_ADDED')
+    },
+  },
 }
 
 module.exports = resolvers

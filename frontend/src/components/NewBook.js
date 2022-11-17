@@ -1,35 +1,15 @@
 import { useMutation } from '@apollo/client'
 import { useState } from 'react'
-import { ADD_BOOK, ALL_BOOKS, ALL_AUTHORS, BOOKS_BY_GENRE } from '../queries'
+import { ADD_BOOK } from '../queries'
 
-const NewBook = ({ show, favoriteGenre }) => {
+const NewBook = ({ show }) => {
   const [title, setTitle] = useState('')
   const [author, setAuthor] = useState('')
   const [published, setPublished] = useState('')
   const [genre, setGenre] = useState('')
   const [genres, setGenres] = useState([])
 
-  const [createBook] = useMutation(ADD_BOOK, {
-    update: (cache, { data: { addBook } }) => {
-      try { // might not be cached before calling this
-        cache.updateQuery({ query: BOOKS_BY_GENRE, variables: { genre: favoriteGenre }}, ({ allBooks }) => ({ 
-          allBooks: addBook.genres.includes(favoriteGenre)
-            ? allBooks.concat(addBook)
-            : allBooks
-        }))
-      } catch (e) {
-        // no need to handle this. this query will be cached if/when needed
-      }
-      cache.updateQuery({ query: ALL_BOOKS }, ({ allBooks }) => ({  // will always be cached before calling
-        allBooks: allBooks.concat(addBook)
-      }))
-      cache.updateQuery({ query: ALL_AUTHORS }, ({ allAuthors }) => ({  // will always be cached before calling
-        allAuthors: allAuthors.map(a => a.name).includes(addBook.author.name)
-          ? allAuthors.map(a => a.name === addBook.author.name ? a = { ...a, bookCount: a.bookCount + 1 } : a)
-          : allAuthors.concat({ ...addBook.author, bookCount: 1 })
-      }))
-    }
-  })
+  const [createBook] = useMutation(ADD_BOOK)
 
   if (!show) {
     return null

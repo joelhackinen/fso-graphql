@@ -11,7 +11,7 @@ const Books = ({ show, books }) => {
     skip: !show
   })
 
-  useEffect(() =>{
+  useEffect(() => {
     if (bookData) {
       setBooksToShow(bookData.allBooks)
     }

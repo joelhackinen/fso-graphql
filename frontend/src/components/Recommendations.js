@@ -1,14 +1,25 @@
 import { useQuery } from '@apollo/client'
 import { useEffect, useState } from 'react'
-import { BOOKS_BY_GENRE } from '../queries'
+import { BOOKS_BY_GENRE, GET_USER } from '../queries'
 
-const Recommendations = ({ show, genre }) => {
+const Recommendations = ({ show }) => {
   const [books, setBooks] = useState([])
+  const [genre, setGenre] = useState(null)
+
+  const { data: userData } = useQuery(GET_USER, {
+    skip: !show,
+  })
 
   const { data: booksData } = useQuery(BOOKS_BY_GENRE, {
     variables: { genre },
-    skip: !show,
+    skip: genre === null,
   })
+
+  useEffect(() => {
+    if (userData) {
+      setGenre(userData.me.favoriteGenre)
+    }
+  }, [userData])
 
   useEffect(() => {
     if (booksData) {
